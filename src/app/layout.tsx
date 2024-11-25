@@ -6,6 +6,8 @@ import { getOrCreateUser } from '@/app/api/user/actions';
 import { getAuthUser } from '@/app/api/auth/utils';
 import { Navbar } from '@/components/navbar';
 import { ThemeProvider } from '@/providers/theme-provider';
+import { QueryProvider } from '@/providers/query-provider';
+import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 
 const geistSans = localFont({
@@ -47,10 +49,13 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <ClerkProvider>
-            <Navbar />
-            {children}
-          </ClerkProvider>
+          <QueryProvider>
+            <ClerkProvider>
+              <Navbar />
+              {children}
+            </ClerkProvider>
+            <Toaster />
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
