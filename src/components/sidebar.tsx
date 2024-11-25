@@ -28,6 +28,7 @@ import type { Conversation } from '@/types';
 export function Sidebar() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { isSignedIn } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState('');
@@ -40,6 +41,11 @@ export function Sidebar() {
   useEffect(() => {
     async function initializeConversations() {
       try {
+        if (!isSignedIn) {
+          setIsLoading(false);
+          return;
+        }
+
         const data = await getConversations();
         setConversations(data);
 
@@ -66,7 +72,7 @@ export function Sidebar() {
     }
 
     initializeConversations();
-  }, [currentId, router]);
+  }, [currentId, router, isSignedIn]);
 
   const handleCreate = async () => {
     try {
@@ -130,8 +136,6 @@ export function Sidebar() {
     params.set('conversation', id);
     router.push(createUrl('/', params));
   };
-
-  const { isSignedIn } = useAuth();
 
   return (
     <div className="flex flex-col h-full w-[280px] bg-background text-primary p-4">
