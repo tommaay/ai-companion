@@ -1,29 +1,38 @@
 {
   "extends": [
     "next/core-web-vitals",
-    "next/typescript",
-    "@eslint/js/recommended",
-    "plugin:@typescript-eslint/recommended",
-    "plugin:react/recommended",
-    "plugin:next/recommended"
+    "plugin:@typescript-eslint/recommended"
   ],
-  "plugins": ["@typescript-eslint", "react", "next"],
-  "env": {
-    "browser": true
-  },
-  "files": ["**/*.{js,mjs,cjs,ts,jsx,tsx}"],
+  "plugins": ["import"],
   "rules": {
     "import/order": [
       "error",
       {
-        "groups": ["builtin", "external", "internal"],
-        "alphabetize": { "order": "asc", "caseInsensitive": true },
-        "newlines-between": "always"
+        "groups": [
+          "builtin",
+          "external",
+          "internal",
+          "parent",
+          "sibling",
+          "index"
+        ],
+        "pathGroups": [
+          {
+            "pattern": "@/**",
+            "group": "internal"
+          }
+        ],
+        "newlines-between": "always",
+        "alphabetize": {
+          "order": "asc",
+          "caseInsensitive": true
+        }
       }
-    ],
-    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    "curly": ["error", "all"],
-    "no-console": ["warn"],
-    "prefer-const": "error"
+    ]
+  },
+  "settings": {
+    "import/resolver": {
+      "typescript": {}
+    }
   }
 }

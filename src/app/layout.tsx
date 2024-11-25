@@ -1,25 +1,23 @@
-import type { Metadata } from 'next';
-import localFont from 'next/font/local';
 import { ClerkProvider } from '@clerk/nextjs';
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 
-import { getOrCreateUser } from '@/app/api/user/actions';
-import { getAuthUser } from '@/app/api/auth/utils';
-import { Navbar } from '@/components/navbar';
-import { ThemeProvider } from '@/providers/theme-provider';
-import { QueryProvider } from '@/providers/query-provider';
 import { Toaster } from '@/components/ui/toaster';
-import { ConversationList } from '@/components/conversation-list';
+import { cn } from '@/lib/utils';
+import { QueryProvider } from '@/providers/query-provider';
+import { ThemeProvider } from '@/providers/theme-provider';
 import './globals.css';
 
-const geistSans = localFont({
-  src: './fonts/GeistVF.woff',
-  variable: '--font-geist-sans',
-  weight: '100 900',
+const fontHeading = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-heading',
 });
-const geistMono = localFont({
-  src: './fonts/GeistMonoVF.woff',
-  variable: '--font-geist-mono',
-  weight: '100 900',
+
+const fontBody = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-body',
 });
 
 export const metadata: Metadata = {
@@ -27,41 +25,22 @@ export const metadata: Metadata = {
   description: 'Your personal AI companion',
 };
 
-async function ensureUser() {
-  const user = await getAuthUser();
-  if (user) {
-    await getOrCreateUser(user);
-  }
-}
-
-export default async function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  await ensureUser();
-
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
+      <body className={cn('antialiased', fontHeading.variable, fontBody.variable)} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          <QueryProvider>
-            <ClerkProvider>
-              <Navbar />
-              <div className="flex h-[calc(100vh-4rem)]">
-                <div className="w-80 flex-shrink-0 border-r">
-                  <ConversationList />
-                </div>
-                <div className="flex-1">{children}</div>
-              </div>
-            </ClerkProvider>
-            <Toaster />
-          </QueryProvider>
+          <ClerkProvider>
+            <QueryProvider>
+              {children}
+              <Toaster />
+            </QueryProvider>
+          </ClerkProvider>
         </ThemeProvider>
       </body>
     </html>

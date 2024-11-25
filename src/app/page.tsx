@@ -1,19 +1,34 @@
-import { auth } from '@clerk/nextjs/server';
-import { ChatBox } from '@/components/chat-box';
+'use server';
 
-export default async function Home() {
+import { SignInButton } from '@clerk/nextjs';
+import { auth } from '@clerk/nextjs/server';
+
+import { ChatArea } from '@/components/chat-area';
+import { Sidebar } from '@/components/sidebar';
+import { Button } from '@/components/ui/button';
+
+
+export default async function LandingPage() {
   const { userId } = await auth();
 
   if (!userId) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] max-w-3xl mx-auto p-4 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen max-w-3xl mx-auto p-4 text-center">
         <h1 className="text-4xl font-bold mb-4">Welcome to AI Companion</h1>
-        <p className="text-xl text-gray-600 mb-8">
-          Sign in to start chatting with your personal AI companion
+        <p className="text-xl text-muted-foreground mb-8">
+          Your personal AI companion for engaging conversations and helpful assistance
         </p>
+        <SignInButton mode="modal">
+          <Button size="lg">Get Started</Button>
+        </SignInButton>
       </div>
     );
   }
 
-  return <ChatBox />;
+  return (
+    <div className="flex h-screen">
+      <Sidebar />
+      <ChatArea />
+    </div>
+  );
 }
