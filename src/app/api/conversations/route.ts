@@ -1,6 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 
 import { db } from '@/db';
 import { conversations } from '@/db/schema';
@@ -16,7 +16,7 @@ export async function GET() {
       .select()
       .from(conversations)
       .where(eq(conversations.userId, userId))
-      .orderBy(conversations.lastMessageAt.desc());
+      .orderBy(desc(conversations.lastMessageAt));
 
     return NextResponse.json(userConversations);
   } catch (error) {

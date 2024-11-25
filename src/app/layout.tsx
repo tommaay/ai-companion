@@ -8,6 +8,7 @@ import { Navbar } from '@/components/navbar';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { QueryProvider } from '@/providers/query-provider';
 import { Toaster } from '@/components/ui/toaster';
+import { ConversationList } from '@/components/conversation-list';
 import './globals.css';
 
 const geistSans = localFont({
@@ -52,7 +53,12 @@ export default async function RootLayout({
           <QueryProvider>
             <ClerkProvider>
               <Navbar />
-              {children}
+              <div className="flex h-[calc(100vh-4rem)]">
+                <div className="w-80 flex-shrink-0 border-r">
+                  <ConversationList />
+                </div>
+                <div className="flex-1">{children}</div>
+              </div>
             </ClerkProvider>
             <Toaster />
           </QueryProvider>

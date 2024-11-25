@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2, SendHorizontal } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,20 @@ export function ChatBox() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-focus input after messages change
+  useEffect(() => {
+    if (!isLoading) {
+      inputRef.current?.focus();
+    }
+  }, [messages, isLoading]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,23 +103,22 @@ export function ChatBox() {
             </Card>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       <form onSubmit={handleSubmit} className="flex items-center space-x-2">
         <Input
+          ref={inputRef}
           type="text"
           placeholder="Type a message..."
           value={message}
           onChange={e => setMessage(e.target.value)}
           disabled={isLoading}
           className="flex-1"
+          autoFocus
         />
-        <Button type="submit" size="icon" disabled={isLoading}>
-          {isLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <SendHorizontal className="h-4 w-4" />
-          )}
+        <Button type="submit" size="icon" disabled={isLoading || !message.trim()}>
+          <SendHorizontal className="h-4 w-4" />
           <span className="sr-only">Send message</span>
         </Button>
       </form>
