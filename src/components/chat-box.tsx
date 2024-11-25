@@ -12,16 +12,29 @@ export function ChatBox() {
 
     // Add user message to chat
     setMessages(prev => [...prev, { role: 'user', content: message }]);
-    setMessage('');
 
-    // TODO: Add API call to handle AI response
-    // For now, just add a mock response
-    setTimeout(() => {
-      setMessages(prev => [
-        ...prev,
-        { role: 'assistant', content: 'This is a mock response. API integration coming soon!' },
-      ]);
-    }, 1000);
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message,
+          conversationId: null, // For now, create new conversation each time
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to send message');
+
+      const data = await response.json();
+      setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      // TODO: Add error handling UI
+    }
+
+    setMessage('');
   };
 
   return (
