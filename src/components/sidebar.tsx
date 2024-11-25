@@ -134,8 +134,8 @@ export function Sidebar() {
   const { isSignedIn } = useAuth();
 
   return (
-    <div className="flex flex-col h-full w-[280px] bg-background text-primary">
-      <div className="flex items-center justify-between p-4">
+    <div className="flex flex-col h-full w-[280px] bg-background text-primary p-4">
+      <div className="flex items-center justify-between py-4">
         <div className="flex items-center space-x-2">
           <MessageSquare className="h-6 w-6" />
           <span className="text-lg font-semibold">AI Companion</span>
@@ -144,12 +144,12 @@ export function Sidebar() {
       <Button
         onClick={handleCreate}
         variant="outline"
-        className="mx-4 mb-2 bg-secondary border-border hover:bg-secondary/80 text-primary"
+        className="mb-2 bg-secondary border-border hover:bg-secondary/80 text-primary"
       >
-        <Plus className="mr-2 h-4 w-4" />
+        <Plus className="h-4 w-4" />
         New Chat
       </Button>
-      <div className="flex-1 px-4 py-2 space-y-4">
+      <div className="flex-1 py-2 space-y-4">
         <div className="pt-4 border-t border-border">
           <h2 className="mb-2 text-xs font-semibold text-muted-foreground">Recent Chats</h2>
           <ScrollArea className="h-[calc(100vh-280px)]">
@@ -160,7 +160,7 @@ export function Sidebar() {
                 <div className="h-8 bg-muted animate-pulse rounded-lg" />
               </div>
             ) : conversations?.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-muted-foreground p-4 text-center">
+              <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-4 text-center">
                 <MessageSquare className="h-8 w-8 mb-2" />
                 <p className="text-sm md:text-base">No conversations yet</p>
                 <p className="text-xs md:text-sm">Create a new chat to get started</p>
@@ -210,7 +210,7 @@ export function Sidebar() {
           </ScrollArea>
         </div>
       </div>
-      <div className="p-4 border-t border-border flex items-center justify-between">
+      <div className="py-4 border-t border-border flex items-center justify-between">
         {!isSignedIn ? (
           <SignInButton>
             <Button variant="outline" size="sm">
