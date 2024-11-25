@@ -1,11 +1,12 @@
 'use client';
 
+import { useAuth } from '@clerk/nextjs';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Copy, ThumbsUp, ThumbsDown, Paperclip, ArrowUp } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import * as z from 'zod';
+import { z } from 'zod';
 
 import {
   sendMessage,
@@ -26,6 +27,7 @@ const messageSchema = z.object({
 type MessageFormValues = z.infer<typeof messageSchema>;
 
 export function ChatArea() {
+  const { isSignedIn } = useAuth();
   const searchParams = useSearchParams();
   const conversationId = searchParams.get('conversation');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -49,10 +51,11 @@ export function ChatArea() {
 
   // Load messages when conversation changes
   useEffect(() => {
+    if (!isSignedIn) return;
     if (conversationId) {
       getMessages(conversationId).then(setMessages);
     }
-  }, [conversationId]);
+  }, [conversationId, isSignedIn]);
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -69,6 +72,10 @@ export function ChatArea() {
   }, []);
 
   const onSubmit = async (data: MessageFormValues) => {
+    if (!isSignedIn) {
+      setError('Please sign in to send messages');
+      return;
+    }
     // Create optimistic message outside try block
     const optimisticUserMessage: ChatMessage = {
       id: Date.now().toString(), // temporary ID
