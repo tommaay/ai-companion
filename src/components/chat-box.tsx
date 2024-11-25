@@ -1,17 +1,34 @@
 'use client';
 
 import { useState } from 'react';
+import { Loader2, SendHorizontal } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 export function ChatBox() {
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() || isLoading) return;
+
+    setIsLoading(true);
+    setError(null);
 
     // Add user message to chat
-    setMessages(prev => [...prev, { role: 'user', content: message }]);
+    setMessages(prev => [...prev, { role: 'user', content: message.trim() }]);
+    setMessage('');
 
     try {
       const response = await fetch('/api/chat', {
@@ -20,7 +37,7 @@ export function ChatBox() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message,
+          message: message.trim(),
           conversationId: null, // For now, create new conversation each time
         }),
       });
@@ -31,42 +48,66 @@ export function ChatBox() {
       setMessages(prev => [...prev, { role: 'assistant', content: data.content }]);
     } catch (error) {
       console.error('Failed to send message:', error);
-      // TODO: Add error handling UI
+      setError('Failed to send message. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-
-    setMessage('');
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-3xl mx-auto p-4">
+    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto p-4 pt-6 space-y-4 mt-16">
       <div className="flex-1 overflow-y-auto space-y-4 pb-4">
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                msg.role === 'user' ? 'bg-black text-white' : 'bg-gray-200 text-gray-900'
-              }`}
+          <div
+            key={i}
+            className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}
+          >
+            <Card
+              className={cn(
+                'max-w-[80%] px-4 py-2 shadow-sm',
+                msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'
+              )}
             >
-              {msg.content}
-            </div>
+              <p className="whitespace-pre-wrap">{msg.content}</p>
+            </Card>
           </div>
         ))}
+        {isLoading && (
+          <div className="flex justify-start">
+            <Card className="max-w-[80%] px-4 py-2 bg-muted shadow-sm">
+              <div className="flex items-center space-x-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <p>AI is thinking...</p>
+              </div>
+            </Card>
+          </div>
+        )}
+        {error && (
+          <div className="flex justify-center">
+            <Card className="bg-destructive/10 text-destructive px-4 py-2 shadow-sm">
+              <p>{error}</p>
+            </Card>
+          </div>
+        )}
       </div>
-      <form onSubmit={handleSubmit} className="flex gap-2">
-        <input
+
+      <form onSubmit={handleSubmit} className="flex items-center space-x-2">
+        <Input
           type="text"
+          placeholder="Type a message..."
           value={message}
           onChange={e => setMessage(e.target.value)}
-          placeholder="Type your message..."
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-black"
+          disabled={isLoading}
+          className="flex-1"
         />
-        <button
-          type="submit"
-          className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-50"
-          disabled={!message.trim()}
-        >
-          Send
-        </button>
+        <Button type="submit" size="icon" disabled={isLoading}>
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <SendHorizontal className="h-4 w-4" />
+          )}
+          <span className="sr-only">Send message</span>
+        </Button>
       </form>
     </div>
   );

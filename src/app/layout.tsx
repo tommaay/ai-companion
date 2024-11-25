@@ -5,6 +5,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { getOrCreateUser } from '@/app/api/user/actions';
 import { getAuthUser } from '@/app/api/auth/utils';
 import { Navbar } from '@/components/navbar';
+import { ThemeProvider } from '@/providers/theme-provider';
 import './globals.css';
 
 const geistSans = localFont({
@@ -38,12 +39,19 @@ export default async function RootLayout({
   await ensureUser();
 
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <ClerkProvider>
-          <Navbar />
-          <main className="pt-16">{children}</main>
-        </ClerkProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <ClerkProvider>
+            <Navbar />
+            {children}
+          </ClerkProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
