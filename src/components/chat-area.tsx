@@ -1,13 +1,18 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Volume2, Copy, ThumbsUp, ThumbsDown, Paperclip, ArrowUp, Loader2 } from 'lucide-react';
+import { Copy, ThumbsUp, ThumbsDown, Paperclip, ArrowUp } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
 
-import { sendMessage, getMessages, type ChatMessage } from '@/app/actions/chat';
+import {
+  sendMessage,
+  getMessages,
+  generateAndSaveAIResponse,
+  type ChatMessage,
+} from '@/app/actions/chat';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -64,15 +69,42 @@ export function ChatArea() {
   }, []);
 
   const onSubmit = async (data: MessageFormValues) => {
+    // Create optimistic message outside try block
+    const optimisticUserMessage: ChatMessage = {
+      id: Date.now().toString(), // temporary ID
+      content: data.message,
+      role: 'user',
+      createdAt: new Date(),
+    };
+
     try {
       setIsLoading(true);
       setError(null);
-      const result = await sendMessage(data.message, conversationId);
-      setMessages(prev => [...prev, result.message]);
+
+      // Optimistically add user message
+      setMessages(prev => [...prev, optimisticUserMessage]);
+
+      // Reset form immediately after showing the message
       reset();
       inputRef.current?.focus();
+
+      // Save user message
+      const result = await sendMessage(data.message, conversationId);
+
+      // Replace optimistic message with actual message
+      setMessages(prev =>
+        prev.map(msg => (msg.id === optimisticUserMessage.id ? result.message : msg))
+      );
+
+      // Generate and save AI response
+      const aiResponse = await generateAndSaveAIResponse(data.message, result.conversationId);
+      if (aiResponse?.message) {
+        setMessages(prev => [...prev, aiResponse.message]);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticUserMessage.id));
     } finally {
       setIsLoading(false);
     }

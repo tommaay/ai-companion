@@ -38,28 +38,42 @@ export function Sidebar() {
 
   // Fetch conversations on mount
   useEffect(() => {
-    getConversations().then(data => {
-      setConversations(data);
-      setIsLoading(false);
-    });
-  }, []);
+    async function initializeConversations() {
+      try {
+        const data = await getConversations();
+        setConversations(data);
 
-  // Select the most recent conversation on initial load
-  useEffect(() => {
-    if (!currentId && conversations.length > 0 && !isLoading) {
-      const mostRecent = conversations[0];
-      const params = new URLSearchParams(searchParams);
-      params.set('conversation', mostRecent.id);
-      router.push(createUrl('/', params));
+        // If no conversations exist and no conversation is selected, create one
+        if (data.length === 0 && !currentId) {
+          const newConversation = await createConversation();
+          setConversations([newConversation]);
+          // Navigate to the new conversation
+          const params = new URLSearchParams();
+          params.set('conversation', newConversation.id);
+          router.push(createUrl('/', params));
+        } else if (data.length > 0 && !currentId) {
+          // If conversations exist but none selected, select the most recent one
+          const params = new URLSearchParams();
+          params.set('conversation', data[0].id);
+          router.push(createUrl('/', params));
+        }
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Failed to initialize conversations:', error);
+        setIsLoading(false);
+      }
     }
-  }, [conversations, currentId, isLoading, router, searchParams]);
+
+    initializeConversations();
+  }, [currentId, router]);
 
   const handleCreate = async () => {
     try {
       setIsLoading(true);
       const newConversation = await createConversation();
       setConversations(prev => [newConversation, ...prev]);
-      const params = new URLSearchParams(searchParams);
+      const params = new URLSearchParams();
       params.set('conversation', newConversation.id);
       router.push(createUrl('/', params));
     } catch (error) {
@@ -95,7 +109,7 @@ export function Sidebar() {
       setConversations(prev => prev.filter(conv => conv.id !== id));
       if (currentId === id) {
         const remaining = conversations.filter(c => c.id !== id);
-        const params = new URLSearchParams(searchParams);
+        const params = new URLSearchParams();
         if (remaining.length > 0) {
           params.set('conversation', remaining[0].id);
           router.push(createUrl('/', params));
@@ -112,7 +126,7 @@ export function Sidebar() {
   };
 
   const handleSelect = (id: string) => {
-    const params = new URLSearchParams(searchParams);
+    const params = new URLSearchParams();
     params.set('conversation', id);
     router.push(createUrl('/', params));
   };

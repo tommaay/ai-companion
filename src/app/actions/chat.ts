@@ -27,7 +27,7 @@ export async function getMessages(conversationId: string) {
   return chatMessages;
 }
 
-export async function sendMessage(content: string, conversationId?: string | null) {
+export async function saveUserMessage(content: string, conversationId?: string | null) {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
 
@@ -39,7 +39,7 @@ export async function sendMessage(content: string, conversationId?: string | nul
       .insert(conversations)
       .values({
         userId,
-        name: content.slice(0, 100), // Use first 100 chars of message as conversation name
+        name: content.slice(0, 100),
       })
       .returning();
 
@@ -47,26 +47,58 @@ export async function sendMessage(content: string, conversationId?: string | nul
   }
 
   // Save user message
-  await db.insert(messages).values({
-    conversationId: currentConversationId,
-    content,
-    role: 'user',
-  });
-
-  // TODO: Replace with actual AI response
-  const aiResponse =
-    "Hello! I'm your AI companion. I'm here to help you with any questions or tasks you might have.";
-
-  // Save AI response
   const [savedMessage] = await db
     .insert(messages)
     .values({
       conversationId: currentConversationId,
-      content: aiResponse,
-      role: 'assistant',
+      content,
+      role: 'user',
     })
     .returning();
 
   revalidatePath('/');
   return { message: savedMessage, conversationId: currentConversationId };
+}
+
+export async function generateAndSaveAIResponse(userMessage: string, conversationId: string) {
+  const { userId } = await auth();
+  if (!userId) throw new Error('Unauthorized');
+
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  while (attempts < maxAttempts) {
+    try {
+      // TODO: Replace with actual AI response generation
+      const aiResponse =
+        "Hello! I'm your AI companion. I'm here to help you with any questions or tasks you might have.";
+
+      // Save the generated response
+      const [savedMessage] = await db
+        .insert(messages)
+        .values({
+          conversationId,
+          content: aiResponse,
+          role: 'assistant',
+        })
+        .returning();
+
+      revalidatePath('/');
+      return { message: savedMessage };
+    } catch (error) {
+      attempts++;
+      if (attempts === maxAttempts) throw error;
+      // Wait before retrying (exponential backoff)
+      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000));
+    }
+  }
+}
+
+export async function sendMessage(content: string, conversationId?: string | null) {
+  const result = await saveUserMessage(content, conversationId);
+  // Return immediately after saving user message
+  return {
+    message: result.message,
+    conversationId: result.conversationId,
+  };
 }
