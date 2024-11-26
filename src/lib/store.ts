@@ -11,8 +11,8 @@ const getDefaultState = () => {
   return window.innerWidth >= 1024; // 1024px is the 'lg' breakpoint in Tailwind
 };
 
-export const useSidebarStore = create<SidebarStore>(set => ({
+export const useSidebarStore = create<SidebarStore>((set) => ({
   isOpen: getDefaultState(),
-  toggle: () => set(state => ({ isOpen: !state.isOpen })),
+  toggle: () => set((state) => ({ isOpen: !state.isOpen })),
   setIsOpen: (open: boolean) => set({ isOpen: open }),
 }));

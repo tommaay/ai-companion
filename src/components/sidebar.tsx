@@ -84,7 +84,7 @@ export function Sidebar() {
     try {
       setIsLoading(true);
       const newConversation = await createConversation();
-      setConversations(prev => [newConversation, ...prev]);
+      setConversations((prev) => [newConversation, ...prev]);
       const params = new URLSearchParams();
       params.set('conversation', newConversation.id);
       router.push(createUrl('/', params));
@@ -100,7 +100,7 @@ export function Sidebar() {
       try {
         setIsLoading(true);
         const updated = await updateConversation(conversation.id, editingName);
-        setConversations(prev => prev.map(conv => (conv.id === updated.id ? updated : conv)));
+        setConversations((prev) => prev.map((conv) => (conv.id === updated.id ? updated : conv)));
         setEditingId(null);
         setEditingName('');
       } catch (error) {
@@ -118,9 +118,9 @@ export function Sidebar() {
     try {
       setIsLoading(true);
       await deleteConversation(id);
-      setConversations(prev => prev.filter(conv => conv.id !== id));
+      setConversations((prev) => prev.filter((conv) => conv.id !== id));
       if (currentId === id) {
-        const remaining = conversations.filter(c => c.id !== id);
+        const remaining = conversations.filter((c) => c.id !== id);
         const params = new URLSearchParams();
         if (remaining.length > 0) {
           params.set('conversation', remaining[0].id);
@@ -213,7 +213,7 @@ export function Sidebar() {
                     {editingId === conversation.id ? (
                       <Input
                         value={editingName}
-                        onChange={e => setEditingName(e.target.value)}
+                        onChange={(e) => setEditingName(e.target.value)}
                         onBlur={() => handleEdit(conversation)}
                         className="h-8 text-sm"
                         autoFocus

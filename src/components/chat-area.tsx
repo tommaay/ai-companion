@@ -1,12 +1,9 @@
 'use client';
 
 import { useAuth } from '@clerk/nextjs';
-import { zodResolver } from '@hookform/resolvers/zod';
 import { Copy, Check, Paperclip, ArrowUp, Menu, MessageSquare, PanelLeftOpen } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 import {
   sendMessage,
@@ -22,36 +19,18 @@ import { useToast } from '@/hooks/use-toast';
 import { useSidebarStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
-const messageSchema = z.object({
-  message: z.string().min(1, 'Message cannot be empty'),
-});
-
-type MessageFormValues = z.infer<typeof messageSchema>;
-
 export function ChatArea() {
   const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copying, setCopying] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const searchParams = useSearchParams();
   const { isSignedIn } = useAuth();
   const { isOpen, toggle } = useSidebarStore();
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors },
-  } = useForm<MessageFormValues>({
-    resolver: zodResolver(messageSchema),
-    defaultValues: {
-      message: '',
-    },
-  });
-
-  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -77,59 +56,6 @@ export function ChatArea() {
     }
   }, []);
 
-  const onSubmit = async (data: MessageFormValues) => {
-    if (!isSignedIn) {
-      setError('Please sign in to send messages');
-      return;
-    }
-    // Create optimistic message outside try block
-    const optimisticUserMessage: ChatMessage = {
-      id: Date.now().toString(), // temporary ID
-      content: data.message,
-      role: 'user',
-      createdAt: new Date(),
-    };
-
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Optimistically add user message
-      setMessages(prev => [...prev, optimisticUserMessage]);
-
-      // Reset form immediately after showing the message
-      reset();
-      inputRef.current?.focus();
-
-      // Save user message
-      const result = await sendMessage(data.message, searchParams.get('conversation'));
-
-      // Replace optimistic message with actual message
-      setMessages(prev =>
-        prev.map(msg => (msg.id === optimisticUserMessage.id ? result.message : msg))
-      );
-
-      // Generate and save AI response
-      const aiResponse = await generateAndSaveAIResponse(data.message, result.conversationId);
-      if (aiResponse?.message) {
-        setMessages(prev => [...prev, aiResponse.message]);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Something went wrong');
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => msg.id !== optimisticUserMessage.id));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmit(onSubmit)();
-    }
-  };
-
   const handleCopy = async (content: string, messageId: string) => {
     try {
       await navigator.clipboard.writeText(content);
@@ -144,6 +70,58 @@ export function ChatArea() {
         description: 'Failed to copy message',
         variant: 'destructive',
       });
+    }
+  };
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!isSignedIn) {
+      setError('Please sign in to send messages');
+      return;
+    }
+
+    if (!message.trim()) {
+      return;
+    }
+
+    const userMessage = message.trim();
+    setMessage('');
+
+    // Add user message immediately
+    setMessages((prev) => [
+      ...prev,
+      { id: Date.now().toString(), content: userMessage, role: 'user', createdAt: new Date() },
+    ]);
+
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Save user message
+      const result = await sendMessage(userMessage, searchParams.get('conversation'));
+
+      // Replace optimistic message with actual message
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === Date.now().toString() ? result.message : msg))
+      );
+
+      // Generate and save AI response
+      const aiResponse = await generateAndSaveAIResponse(userMessage, result.conversationId);
+      if (aiResponse?.content) {
+        setMessages((prev) => [...prev, aiResponse]);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      onSubmit(e);
     }
   };
 
@@ -181,7 +159,7 @@ export function ChatArea() {
               <span className="text-error text-sm">{error}</span>
             </div>
           )}
-          {messages.map(message => (
+          {messages.map((message) => (
             <div
               key={message.id}
               className={cn(
@@ -226,7 +204,8 @@ export function ChatArea() {
           {isLoading && (
             <div className="flex items-end gap-2 max-w-[80%] mb-4">
               <Avatar className="h-8 w-8 mb-4">
-                <AvatarImage src="/placeholder-ai.svg" />
+                {/* Replace when we implement AI images and avatars */}
+                {/* <AvatarImage src={avatar} /> */}
                 <AvatarFallback>AI</AvatarFallback>
               </Avatar>
               <div className="bg-secondary rounded-2xl rounded-bl-none px-4 py-2.5">
@@ -240,7 +219,7 @@ export function ChatArea() {
           )}
         </div>
       </ScrollArea>
-      <form onSubmit={handleSubmit(onSubmit)} className="border-t p-4 max-w-3xl mx-auto w-full">
+      <form onSubmit={onSubmit} className="border-t p-4 max-w-3xl mx-auto w-full">
         <div className="relative flex items-center bg-secondary rounded-2xl">
           <Button
             type="button"
@@ -251,35 +230,24 @@ export function ChatArea() {
             <Paperclip className="h-5 w-5" />
           </Button>
           <Textarea
-            {...register('message')}
-            ref={e => {
-              if (e) {
-                register('message').ref(e);
-                Object.defineProperty(inputRef, 'current', {
-                  value: e,
-                  writable: true,
-                });
-              }
-            }}
+            ref={inputRef}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
             rows={1}
             placeholder="Message AI..."
             spellCheck={false}
-            className={cn(
-              'min-h-[44px] max-h-[168px] resize-none pr-12 pl-12 py-3 bg-transparent border-0 focus-visible:ring-0',
-              errors.message && 'border-error'
-            )}
+            className="min-h-[44px] max-h-[168px] resize-none pr-12 pl-12 py-3 bg-transparent border-0 focus-visible:ring-0"
             onKeyDown={handleKeyDown}
           />
           <Button
             type="submit"
             size="icon"
-            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-primary hover:bg-primary/90"
-            disabled={isLoading}
+            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 bg-primary hover:bg-primary/90 disabled:pointer-events-none"
+            disabled={isLoading || !message.trim()}
           >
             <ArrowUp className="h-5 w-5" />
           </Button>
         </div>
-        {errors.message && <p className="text-xs text-error mt-1">{errors.message.message}</p>}
       </form>
     </div>
   );

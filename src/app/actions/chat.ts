@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 import { db } from '@/db';
 import { conversations, messages } from '@/db/schema';
+import { replicate } from '@/lib/replicate';
 
 export type ChatMessage = {
   id: string;
@@ -64,33 +65,38 @@ export async function generateAndSaveAIResponse(userMessage: string, conversatio
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
 
-  let attempts = 0;
-  const maxAttempts = 3;
+  try {
+    const output = (await replicate.run(
+      'meta/codellama-7b-instruct:aac3ab196f8a75729aab9368cd45ea6ad3fc793b6cda93b1ded17299df369332',
+      {
+        input: {
+          prompt: userMessage,
+          system_prompt: `You're a friendly and empathetic AI companion.
+            Keep responses very short and casual - just 2-3 sentences max.
+            Be warm and genuine, like texting with a close friend.
+            Focus on relating and empathizing rather than giving advice.`,
+        },
+      }
+    )) as string[];
 
-  while (attempts < maxAttempts) {
-    try {
-      // TODO: Replace with actual AI response generation
-      const aiResponse =
-        "Hello! I'm your AI companion. I'm here to help you with any questions or tasks you might have.";
+    if (!output) throw new Error('No output from Replicate');
 
-      // Save the generated response
-      const [savedMessage] = await db
-        .insert(messages)
-        .values({
-          conversationId,
-          content: aiResponse,
-          role: 'assistant',
-        })
-        .returning();
+    const content = output.join('');
+    const message = {
+      id: crypto.randomUUID().toString(),
+      content,
+      conversationId,
+      role: 'assistant' as const,
+      createdAt: new Date(),
+    };
 
-      revalidatePath('/');
-      return { message: savedMessage };
-    } catch (error) {
-      attempts++;
-      if (attempts === maxAttempts) throw error;
-      // Wait before retrying (exponential backoff)
-      await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempts) * 1000));
-    }
+    await db.insert(messages).values({
+      ...message,
+    });
+
+    return message;
+  } catch (error) {
+    console.error('Error generating AI response:', error);
   }
 }
 
