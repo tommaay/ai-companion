@@ -2,7 +2,7 @@
 
 import { useAuth } from '@clerk/nextjs';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Copy, ThumbsUp, ThumbsDown, Paperclip, ArrowUp } from 'lucide-react';
+import { Copy, Check, Paperclip, ArrowUp, Menu, MessageSquare, PanelLeftOpen } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -18,6 +18,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
+import { useToast } from '@/hooks/use-toast';
+import { useSidebarStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 
 const messageSchema = z.object({
@@ -27,12 +29,15 @@ const messageSchema = z.object({
 type MessageFormValues = z.infer<typeof messageSchema>;
 
 export function ChatArea() {
-  const { isSignedIn } = useAuth();
-  const searchParams = useSearchParams();
-  const conversationId = searchParams.get('conversation');
+  const { toast } = useToast();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copying, setCopying] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
+  const { isSignedIn } = useAuth();
+  const { isOpen, toggle } = useSidebarStore();
 
   const {
     register,
@@ -47,15 +52,16 @@ export function ChatArea() {
   });
 
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Load messages when conversation changes
   useEffect(() => {
     if (!isSignedIn) return;
-    if (conversationId) {
-      getMessages(conversationId).then(setMessages);
+    const currentConversationId = searchParams.get('conversation');
+
+    if (currentConversationId) {
+      getMessages(currentConversationId).then(setMessages);
     }
-  }, [conversationId, isSignedIn]);
+  }, [searchParams, isSignedIn]);
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -96,7 +102,7 @@ export function ChatArea() {
       inputRef.current?.focus();
 
       // Save user message
-      const result = await sendMessage(data.message, conversationId);
+      const result = await sendMessage(data.message, searchParams.get('conversation'));
 
       // Replace optimistic message with actual message
       setMessages(prev =>
@@ -124,9 +130,51 @@ export function ChatArea() {
     }
   };
 
+  const handleCopy = async (content: string, messageId: string) => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopying(messageId);
+      toast({
+        description: 'Message copied to clipboard',
+        duration: 2000,
+      });
+      setTimeout(() => setCopying(null), 2000);
+    } catch {
+      toast({
+        description: 'Failed to copy message',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 h-full bg-background">
-      <ScrollArea ref={scrollRef} className="flex-1 p-4">
+    <div className="flex flex-col flex-1 h-full bg-background relative">
+      <div className="lg:hidden flex items-center justify-between p-4 border-b sticky top-0 bg-background z-40">
+        <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => toggle()}>
+          <Menu className="h-6 w-6" />
+        </Button>
+        <div className="flex items-center space-x-2">
+          <MessageSquare className="h-6 w-6" />
+          <span className="text-lg font-semibold">AI Companion</span>
+        </div>
+        <div className="w-10" />
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={cn(
+          'fixed left-4 top-4 z-50',
+          'transition-all duration-500 ease-in-out',
+          'hidden lg:flex',
+          isOpen
+            ? 'opacity-0 -translate-x-4 duration-200 pointer-events-none'
+            : 'opacity-100 translate-x-0 delay-200'
+        )}
+        onClick={() => toggle()}
+      >
+        <PanelLeftOpen className="h-5 w-5" />
+      </Button>
+      <ScrollArea ref={scrollRef} className="flex-1 p-4 no-scrollbar">
         <div className="max-w-3xl mx-auto space-y-8">
           {error && (
             <div className="flex items-center justify-center p-4">
@@ -152,25 +200,18 @@ export function ChatArea() {
                       {message.content}
                     </div>
                     <div className="flex items-center gap-2 px-2">
-                      <Button variant="ghost" size="icon" className="h-6 w-6 hover:bg-secondary/80">
-                        <Copy className="h-3.5 w-3.5" />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 hover:bg-secondary/80"
+                        onClick={() => handleCopy(message.content, message.id)}
+                      >
+                        {copying === message.id ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
                       </Button>
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 hover:bg-secondary/80"
-                        >
-                          <ThumbsUp className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 hover:bg-secondary/80"
-                        >
-                          <ThumbsDown className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
                     </div>
                   </div>
                 </div>
