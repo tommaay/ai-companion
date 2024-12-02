@@ -1,6 +1,6 @@
 {
-  "id": "c6a97712-a6f0-40bd-a6f9-8c5fa2a49dab",
-  "prevId": "00000000-0000-0000-0000-000000000000",
+  "id": "fbc7c769-3c48-49d0-b21e-3bb51a830533",
+  "prevId": "c6a97712-a6f0-40bd-a6f9-8c5fa2a49dab",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -161,7 +161,7 @@
           "name": "companion_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "name": {
           "name": "name",

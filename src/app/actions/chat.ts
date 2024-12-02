@@ -7,15 +7,9 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/db';
 import { conversations, messages } from '@/db/schema';
 import { replicate } from '@/lib/replicate';
+import type { Message, GetMessagesParams, SaveUserMessageParams } from '@/types/message';
 
-export type ChatMessage = {
-  id: string;
-  content: string;
-  role: 'user' | 'assistant';
-  createdAt: Date;
-};
-
-export async function getMessages(conversationId: string) {
+export async function getMessages({ conversationId }: GetMessagesParams): Promise<Message[]> {
   const { userId } = await auth();
   if (!userId) return [];
 
@@ -28,42 +22,86 @@ export async function getMessages(conversationId: string) {
   return chatMessages;
 }
 
-export async function saveUserMessage(content: string, conversationId?: string | null) {
+interface SaveMessageParams extends SaveUserMessageParams {
+  companionId: string;
+}
+
+export async function sendMessage({
+  content,
+  companionId,
+  conversationId,
+}: SaveMessageParams): Promise<{ userMessage: Message; aiMessage: Message }> {
+  const [userMessage, aiMessage] = await Promise.all([
+    saveUserMessage({
+      content,
+      companionId,
+      conversationId,
+      role: 'user',
+    }),
+    generateAndSaveAIResponse({
+      userMessage: content,
+      conversationId,
+    }),
+  ]);
+
+  return { userMessage, aiMessage };
+}
+
+export async function saveUserMessage({
+  content,
+  companionId,
+  conversationId,
+}: SaveMessageParams): Promise<Message> {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
 
-  let currentConversationId = conversationId;
+  let actualConversationId = conversationId;
 
-  // Create a new conversation if none exists
-  if (!currentConversationId) {
-    const [newConversation] = await db
+  if (!actualConversationId) {
+    const [conversation] = await db
       .insert(conversations)
       .values({
-        userId,
         name: content.slice(0, 100),
+        userId,
+        companionId,
       })
       .returning();
 
-    currentConversationId = newConversation.id;
+    actualConversationId = conversation.id;
   }
 
-  // Save user message
-  const [savedMessage] = await db
+  const [message] = await db
     .insert(messages)
     .values({
-      conversationId: currentConversationId,
       content,
       role: 'user',
+      conversationId: actualConversationId,
     })
     .returning();
 
   revalidatePath('/');
-  return { message: savedMessage, conversationId: currentConversationId };
+  return message;
 }
 
-export async function generateAndSaveAIResponse(userMessage: string, conversationId: string) {
+interface GenerateAIResponseParams {
+  userMessage: string;
+  conversationId: string;
+}
+
+export async function generateAndSaveAIResponse({
+  userMessage,
+  conversationId,
+}: GenerateAIResponseParams): Promise<Message> {
   const { userId } = await auth();
   if (!userId) throw new Error('Unauthorized');
+
+  const conversation = await db
+    .select()
+    .from(conversations)
+    .where(eq(conversations.id, conversationId))
+    .limit(1);
+
+  if (!conversation[0]) throw new Error('Conversation not found');
 
   try {
     const output = (await replicate.run(
@@ -82,29 +120,24 @@ export async function generateAndSaveAIResponse(userMessage: string, conversatio
     if (!output) throw new Error('No output from Replicate');
 
     const content = output.join('');
-    const message = {
-      id: crypto.randomUUID().toString(),
-      content,
-      conversationId,
-      role: 'assistant' as const,
-      createdAt: new Date(),
-    };
+    const [message] = await db
+      .insert(messages)
+      .values({
+        content,
+        role: 'assistant',
+        conversationId,
+      })
+      .returning();
 
-    await db.insert(messages).values({
-      ...message,
-    });
+    await db
+      .update(conversations)
+      .set({ lastMessageAt: new Date() })
+      .where(eq(conversations.id, conversationId));
 
+    revalidatePath('/');
     return message;
   } catch (error) {
     console.error('Error generating AI response:', error);
+    throw error;
   }
-}
-
-export async function sendMessage(content: string, conversationId?: string | null) {
-  const result = await saveUserMessage(content, conversationId);
-  // Return immediately after saving user message
-  return {
-    message: result.message,
-    conversationId: result.conversationId,
-  };
 }

@@ -1,0 +1,1 @@
+ALTER TABLE "conversations" ALTER COLUMN "companion_id" DROP NOT NULL;

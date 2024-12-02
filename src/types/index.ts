@@ -1,34 +1,19 @@
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  imageUrl: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+export type {
+  Conversation,
+  ConversationWithMessages,
+  CreateConversationParams,
+  UpdateConversationParams,
+  DeleteConversationParams,
+} from './conversation';
 
-export interface Conversation {
-  id: string;
-  userId: string;
-  name: string;
-  lastMessageAt: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
+export type {
+  Message,
+  GetMessagesParams,
+  SaveUserMessageParams,
+  GenerateAIResponseParams,
+  SendMessageParams,
+} from './message';
 
-export interface Message {
-  id: string;
-  conversationId: string;
-  content: string;
-  role: 'user' | 'assistant';
-  createdAt: Date;
-}
+export type { User, UserCreate, UserUpdate, UserWithConversations } from './user';
 
-// Extended types with relationships
-export interface ConversationWithMessages extends Conversation {
-  messages: Message[];
-}
-
-export interface UserWithConversations extends User {
-  conversations: Conversation[];
-}
+export type { Companion, CompanionCreate, CompanionUpdate } from './companion';
